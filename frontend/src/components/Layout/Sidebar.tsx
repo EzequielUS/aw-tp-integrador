@@ -4,21 +4,25 @@ import styles from './Sidebar.module.css';
 
 const MENU = {
   Residente: [
-    { to: '/residente/reclamos', label: 'Mis Reclamos' },
-    { to: '/residente/avisos', label: 'Avisos' },
-    { to: '/residente/reportes', label: 'Mis Reportes' },
+    { to: '/dashboard', label: 'General' },
+    { to: '/reclamos', label: 'Reclamos' },
+    { to: '/incidentes', label: 'Incidentes' },
+    { to: '/avisos', label: 'Avisos' },
   ],
   Administrador: [
-    { to: '/admin/triage', label: 'Triage de Reclamos' },
-    { to: '/admin/incidentes', label: 'Gestión de Incidentes' },
-    { to: '/admin/rutinas', label: 'Rutinas' },
-    { to: '/admin/avisos', label: 'Publicar Avisos' },
+    { to: '/dashboard', label: 'General' },
+    { to: '/reclamos', label: 'Reclamos' },
+    { to: '/incidentes', label: 'Incidentes' },
+    { to: '/rutinas', label: 'Rutinas' },
+    { to: '/avisos', label: 'Avisos' },
   ],
   Encargado: [
-    { to: '/encargado/tareas', label: 'Mis Tareas' },
-    { to: '/encargado/rutinas', label: 'Mis Rutinas' },
-    { to: '/encargado/crear-reclamo', label: 'Crear Reclamo' },
-    { to: '/encargado/avisos', label: 'Avisos' },
+    { to: '/dashboard', label: 'General' },
+    { to: '/tareas', label: 'Tareas' },
+    { to: '/rutinas', label: 'Rutinas' },
+    { to: '/reclamos', label: 'Reclamos' },
+    { to: '/incidentes', label: 'Incidentes' },
+    { to: '/avisos', label: 'Avisos' },
   ],
 };
 

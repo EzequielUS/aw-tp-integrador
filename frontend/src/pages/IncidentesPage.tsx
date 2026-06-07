@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Incidente {
   id: number; nivelGravedad: string; descripcion: string; estado: string; fechaCreacion: string;
 }
-interface Persona { id: number; nombre: string; apellido: string; }
+interface Persona { id: number; nombre: string; apellido: string; rol?: string; }
+interface Tarea {
+  id: number; descripcion: string; estado: string;
+  encargado?: { nombre: string; apellido: string };
+}
+
+const TAREA_BADGE: Record<string, string> = {
+  Pendiente: 'badge-pendiente', 'En ejecución': 'badge-enprogreso', Finalizada: 'badge-completada',
+};
 
 const GRAVEDAD_BADGE: Record<string, string> = { Baja: 'badge-baja', Media: 'badge-media', Alta: 'badge-alta' };
 const ESTADO_BADGE: Record<string, string> = {
@@ -12,18 +21,28 @@ const ESTADO_BADGE: Record<string, string> = {
 };
 const NEXT_ESTADO: Record<string, string> = { Abierto: 'En progreso', 'En progreso': 'Resuelto' };
 
+function errMsg(err: unknown, fallback: string) {
+  return (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? fallback;
+}
+
 export default function IncidentesPage() {
+  const { user } = useAuth();
+  const esAdmin = user?.rol === 'Administrador';
+
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [encargados, setEncargados] = useState<Persona[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [nivel, setNivel] = useState('Media');
   const [desc, setDesc] = useState('');
   const [error, setError] = useState('');
-  // Tarea modal
+  // Modal asignar tarea (admin)
   const [tareaModal, setTareaModal] = useState<Incidente | null>(null);
   const [encargadoId, setEncargadoId] = useState('');
   const [tareaDesc, setTareaDesc] = useState('');
   const [fechaLimite, setFechaLimite] = useState('');
+
+  // Modal ver tareas (todos)
+  const [tareasView, setTareasView] = useState<{ incidente: Incidente; tareas: Tarea[] } | null>(null);
 
   async function load() {
     const { data } = await api.get<{ data: Incidente[] }>('/incidentes');
@@ -32,7 +51,9 @@ export default function IncidentesPage() {
 
   useEffect(() => {
     load();
-    api.get<{ data: Persona[] }>('/personas').then(r => setEncargados(r.data.data.filter((p: Persona & { rol?: string }) => (p as { rol?: string }).rol === 'Encargado'))).catch(() => {});
+    if (esAdmin) {
+      api.get<{ data: Persona[] }>('/personas').then(r => setEncargados(r.data.data.filter(p => p.rol === 'Encargado'))).catch(() => {});
+    }
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
@@ -42,7 +63,7 @@ export default function IncidentesPage() {
       await api.post('/incidentes', { nivel_gravedad: nivel, descripcion: desc.trim() });
       setDesc(''); setShowCreate(false); load();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Error');
+      setError(errMsg(err, 'Error'));
     }
   }
 
@@ -53,8 +74,13 @@ export default function IncidentesPage() {
       await api.patch(`/incidentes/${inc.id}`, { estado: next });
       load();
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Error');
+      alert(errMsg(err, 'Error'));
     }
+  }
+
+  async function handleVerTareas(inc: Incidente) {
+    const { data } = await api.get<{ data: Tarea[] }>(`/incidentes/${inc.id}/tareas`);
+    setTareasView({ incidente: inc, tareas: data.data });
   }
 
   async function handleAddTarea(e: React.FormEvent) {
@@ -69,20 +95,22 @@ export default function IncidentesPage() {
       setTareaModal(null); setEncargadoId(''); setTareaDesc(''); setFechaLimite('');
       load();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? 'Error');
+      setError(errMsg(err, 'Error'));
     }
   }
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Gestión de Incidentes</h1>
-        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? 'Cancelar' : '+ Nuevo Incidente'}
-        </button>
+        <h1 className="page-title">Incidentes</h1>
+        {esAdmin && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? 'Cancelar' : '+ Nuevo Incidente'}
+          </button>
+        )}
       </div>
 
-      {showCreate && (
+      {showCreate && esAdmin && (
         <div className="card" style={{ marginBottom: '1.25rem' }}>
           {error && <p className="error-msg">{error}</p>}
           <form onSubmit={handleCreate}>
@@ -101,7 +129,7 @@ export default function IncidentesPage() {
         </div>
       )}
 
-      {tareaModal && (
+      {tareaModal && esAdmin && (
         <div className="modal-overlay" onClick={() => setTareaModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>Asignar Tarea — Incidente #{tareaModal.id}</h2>
@@ -131,9 +159,40 @@ export default function IncidentesPage() {
         </div>
       )}
 
+      {tareasView && (
+        <div className="modal-overlay" onClick={() => setTareasView(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>Tareas — Incidente #{tareasView.incidente.id}</h2>
+            <p style={{ color: '#64748b', marginBottom: '1rem' }}>{tareasView.incidente.descripcion}</p>
+            <table>
+              <thead><tr><th>#</th><th>Encargado</th><th>Descripción</th><th>Estado</th></tr></thead>
+              <tbody>
+                {tareasView.tareas.length === 0 && (
+                  <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>Sin tareas asignadas</td></tr>
+                )}
+                {tareasView.tareas.map(t => (
+                  <tr key={t.id}>
+                    <td>{t.id}</td>
+                    <td>{t.encargado?.nombre} {t.encargado?.apellido}</td>
+                    <td>{t.descripcion}</td>
+                    <td><span className={`badge ${TAREA_BADGE[t.estado] ?? ''}`}>{t.estado}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setTareasView(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <table>
         <thead>
-          <tr><th>#</th><th>Gravedad</th><th>Descripción</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr>
+          <tr>
+            <th>#</th><th>Gravedad</th><th>Descripción</th><th>Estado</th><th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
         </thead>
         <tbody>
           {incidentes.length === 0 && (
@@ -147,12 +206,13 @@ export default function IncidentesPage() {
               <td><span className={`badge ${ESTADO_BADGE[inc.estado] ?? ''}`}>{inc.estado}</span></td>
               <td>{new Date(inc.fechaCreacion).toLocaleDateString('es-AR')}</td>
               <td style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {NEXT_ESTADO[inc.estado] && (
+                <button className="btn btn-secondary btn-sm" onClick={() => handleVerTareas(inc)}>Ver tareas</button>
+                {esAdmin && NEXT_ESTADO[inc.estado] && (
                   <button className="btn btn-primary btn-sm" onClick={() => handleAvanzar(inc)}>
                     → {NEXT_ESTADO[inc.estado]}
                   </button>
                 )}
-                {inc.estado !== 'Resuelto' && (
+                {esAdmin && inc.estado !== 'Resuelto' && (
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTareaModal(inc); setError(''); }}>
                     + Tarea
                   </button>

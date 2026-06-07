@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Tarea {
   id: number; descripcion: string; estado: string;
@@ -116,17 +116,18 @@ export default function TareasPage() {
 
       <table>
         <thead>
-          <tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr>
+          <tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Origen</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr>
         </thead>
         <tbody>
           {filtered.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>No hay tareas</td></tr>
+            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>No hay tareas</td></tr>
           )}
           {filtered.map(t => (
             <tr key={t.id}>
               <td>{t.id}</td>
               <td>{t.descripcion.length > 55 ? t.descripcion.slice(0, 55) + '…' : t.descripcion}</td>
               <td>{t.rutinaId ? 'Preventiva' : 'Correctiva'}</td>
+              <td>{t.rutinaId ? `Rutina #${t.rutinaId}` : `Incidente #${t.incidenteId}`}</td>
               <td><span className={`badge ${ESTADO_BADGE[t.estado] ?? ''}`}>{t.estado}</span></td>
               <td>{t.fechaLimite ? new Date(t.fechaLimite).toLocaleDateString('es-AR') : '—'}</td>
               <td>
