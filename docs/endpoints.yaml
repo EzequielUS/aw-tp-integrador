@@ -1,0 +1,644 @@
+openapi: 3.0.0
+servers:
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/personal-ea3/arquitectura-web/1.0.0
+info:
+  description: API RESTful para la gestión operativa de un consorcio.
+  version: "1.0.0"
+  title: API Consorcio
+  contact:
+    email: you@your-company.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: Autenticación
+    description: Endpoints de login y autenticación
+  - name: Avisos
+    description: Tablón de comunicaciones de la administración
+  - name: Reclamos
+    description: Operaciones sobre los reclamos de residentes
+  - name: Incidentes
+    description: Gestión de problemas validados por la administración
+  - name: Rutinas
+    description: Planificación operativa diaria
+  - name: Tareas
+    description: Ejecución y control de tareas (preventivas y correctivas)
+
+paths:
+  # ----------------------------------------
+  # DOMINIO: AUTENTICACIÓN
+  # ----------------------------------------
+  /api/auth/login:
+    post:
+      tags:
+        - Autenticación
+      summary: Login de usuario
+      description: Autentica un usuario y devuelve JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciales inválidas
+  # ----------------------------------------
+  # DOMINIO: AVISOS
+  # ----------------------------------------
+  /api/avisos:
+    get:
+      tags:
+        - Avisos
+      summary: Lista los avisos del consorcio
+      description: Visible para todos los perfiles (Residentes, Encargados, Administradores).
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Aviso'
+    post:
+      tags:
+        - Avisos
+      summary: Publica un nuevo aviso
+      description: Exclusivo para Administradores.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoAviso'
+      responses:
+        '201':
+          description: Aviso publicado
+        '403':
+          description: No autorizado
+
+  /api/avisos/{id}:
+    delete:
+      tags:
+        - Avisos
+      summary: Elimina un aviso
+      description: Exclusivo para Administradores.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Aviso eliminado correctamente (No Content)
+        '404':
+          description: Aviso no encontrado
+
+  # ----------------------------------------
+  # DOMINIO: RECLAMOS
+  # ----------------------------------------
+  /api/reclamos:
+    get:
+      tags:
+        - Reclamos
+      summary: Lista los reclamos
+      description: Devuelve un array de reclamos. El residente ve los propios, el admin ve todos.
+      parameters:
+        - in: query
+          name: estado
+          schema:
+            type: string
+            enum: [Pendiente, Rechazado, Aprobado]
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reclamo'
+    post:
+      tags:
+        - Reclamos
+      summary: Crea un nuevo reclamo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoReclamo'
+      responses:
+        '201':
+          description: Reclamo creado exitosamente
+
+  /api/reclamos/{id}:
+    get:
+      tags:
+        - Reclamos
+      summary: Obtiene el detalle de un reclamo
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reclamo'
+    patch:
+      tags:
+        - Reclamos
+      summary: Actualiza el estado de un reclamo (Triage)
+      description: Exclusivo para Administradores.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchReclamo'
+      responses:
+        '200':
+          description: Estado actualizado
+
+  # ----------------------------------------
+  # DOMINIO: INCIDENTES
+  # ----------------------------------------
+  /api/incidentes:
+    get:
+      tags:
+        - Incidentes
+      summary: Lista los incidentes consolidados
+      parameters:
+        - in: query
+          name: gravedad
+          schema:
+            type: string
+            enum: [Baja, Media, Alta]
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Incidente'
+    post:
+      tags:
+        - Incidentes
+      summary: Crea un incidente manualmente
+      description: Exclusivo para Administradores.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoIncidente'
+      responses:
+        '201':
+          description: Incidente creado exitosamente
+
+  /api/incidentes/{id}:
+    get:
+      tags:
+        - Incidentes
+      summary: Obtiene el detalle de un incidente
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incidente'
+    patch:
+      tags:
+        - Incidentes
+      summary: Actualiza el estado del incidente
+      description: Exclusivo para Administradores.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchIncidente'
+      responses:
+        '200':
+          description: Estado actualizado
+
+  /api/incidentes/{id}/tareas:
+    get:
+      tags:
+        - Tareas
+      summary: Lista las tareas correctivas de un incidente
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tarea'
+    post:
+      tags:
+        - Tareas
+      summary: Asigna una nueva tarea correctiva al incidente
+      description: Exclusivo para Administradores.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaTareaCorrectiva'
+      responses:
+        '201':
+          description: Tarea asignada exitosamente
+
+  # ----------------------------------------
+  # DOMINIO: RUTINAS (Planificación)
+  # ----------------------------------------
+  /api/rutinas:
+    get:
+      tags:
+        - Rutinas
+      summary: Lista las rutinas de trabajo
+      description: El encargado lo usa para ver su plan diario.
+      parameters:
+        - in: query
+          name: encargado_id
+          schema:
+            type: integer
+        - in: query
+          name: fecha
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rutina'
+    post:
+      tags:
+        - Rutinas
+      summary: Crea una rutina y sus tareas preventivas
+      description: Exclusivo para Administradores.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaRutina'
+      responses:
+        '201':
+          description: Rutina creada exitosamente
+
+  /api/rutinas/{id}/tareas:
+    get:
+      tags:
+        - Tareas
+      summary: Lista las tareas preventivas de una rutina
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tarea'
+
+  # ----------------------------------------
+  # DOMINIO: TAREAS (Ejecución)
+  # ----------------------------------------
+  /api/tareas/{id}:
+    patch:
+      tags:
+        - Tareas
+      summary: Actualiza el estado de una tarea (preventiva o correctiva)
+      description: Endpoint utilizado por el Encargado para reportar avance.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTarea'
+      responses:
+        '200':
+          description: Estado de la tarea actualizado
+
+components:
+  schemas:
+    # --- AUTENTICACIÓN ---
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "diego@consorcio.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                nombre:
+                  type: string
+                  example: "Diego"
+                apellido:
+                  type: string
+                  example: "Marafetti"
+                email:
+                  type: string
+                  example: "diego@consorcio.com"
+                rol:
+                  type: string
+                  enum: [Administrador, Residente, Encargado]
+                  example: "Administrador"
+
+    # --- AVISOS ---
+    Aviso:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        administrador_id:
+          type: integer
+          example: 2
+        titulo:
+          type: string
+          example: "Corte de agua programado"
+        cuerpo:
+          type: string
+          example: "El día martes de 10 a 14hs se cortará el suministro por limpieza de tanques."
+        fecha_publicacion:
+          type: string
+          format: date-time
+    NuevoAviso:
+      type: object
+      required:
+        - titulo
+        - cuerpo
+      properties:
+        titulo:
+          type: string
+          example: "Corte de agua programado"
+        cuerpo:
+          type: string
+          example: "El día martes de 10 a 14hs se cortará el suministro por limpieza de tanques."
+
+    # --- RECLAMOS ---
+    Reclamo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        residente_id:
+          type: integer
+          example: 42
+        unidad_id:
+          type: integer
+          example: 10
+        descripcion:
+          type: string
+          example: "Filtración de agua en el techo de la cochera 3."
+        estado:
+          type: string
+          example: "Pendiente"
+        incidente_id:
+          type: integer
+          nullable: true
+          example: null
+    NuevoReclamo:
+      type: object
+      required:
+        - unidad_id
+        - descripcion
+      properties:
+        unidad_id:
+          type: integer
+          example: 10
+        descripcion:
+          type: string
+          example: "Filtración de agua en el techo de la cochera 3."
+    PatchReclamo:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [Rechazado, Aprobado]
+        motivo_rechazo:
+          type: string
+          example: "Corresponde a reparación interna del propietario."
+
+    # --- INCIDENTES ---
+    Incidente:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nivel_gravedad:
+          type: string
+          example: "Alta"
+        descripcion:
+          type: string
+          example: "Rotura de caño maestro en palier PB."
+        estado:
+          type: string
+          example: "Abierto"
+    NuevoIncidente:
+      type: object
+      required:
+        - nivel_gravedad
+        - descripcion
+      properties:
+        nivel_gravedad:
+          type: string
+          enum: [Baja, Media, Alta]
+        descripcion:
+          type: string
+          example: "Rotura de caño maestro en palier PB."
+    PatchIncidente:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [En progreso, Resuelto]
+
+    # --- RUTINAS ---
+    Rutina:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 50
+        encargado_id:
+          type: integer
+          example: 5
+        fecha_asignacion:
+          type: string
+          format: date
+          example: "2026-04-11"
+        estado:
+          type: string
+          example: "Pendiente"
+    NuevaRutina:
+      type: object
+      required:
+        - encargado_id
+        - fecha_asignacion
+        - tareas
+      properties:
+        encargado_id:
+          type: integer
+          example: 5
+        fecha_asignacion:
+          type: string
+          format: date
+          example: "2026-04-11"
+        tareas:
+          type: array
+          description: Lista de descripciones para generar las tareas hijas automáticamente.
+          items:
+            type: string
+            example: "Limpieza de palieres del piso 1 al 5."
+
+    # --- TAREAS ---
+    Tarea:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 100
+        encargado_id:
+          type: integer
+          example: 5
+        incidente_id:
+          type: integer
+          nullable: true
+          example: null
+        rutina_id:
+          type: integer
+          nullable: true
+          example: 50
+        descripcion:
+          type: string
+          example: "Limpieza de palieres del piso 1 al 5."
+        estado:
+          type: string
+          example: "Pendiente"
+        fecha_limite:
+          type: string
+          format: date-time
+          nullable: true
+    NuevaTareaCorrectiva:
+      type: object
+      required:
+        - encargado_id
+        - descripcion
+      properties:
+        encargado_id:
+          type: integer
+          example: 5
+        descripcion:
+          type: string
+          example: "Cerrar llave de paso general y esperar al plomero."
+        fecha_limite:
+          type: string
+          format: date-time
+    PatchTarea:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [En ejecución, Finalizada]
